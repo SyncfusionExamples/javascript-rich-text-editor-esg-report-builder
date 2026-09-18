@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="ESG logo">
+  <!-- Leaf mark -->
+  <circle cx="48" cy="48" r="44" fill="#EAF4EE"/>
+  <path d="M30 62 C30 42, 44 32, 68 30 C66 54, 56 68, 36 68 C26 68, 30 62, 30 62 Z"
+        fill="#1F6E43"/>
+  <path d="M34 62 C42 52, 52 44, 62 36"
+        stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- ESG bars -->
+  <rect x="24" y="74" width="6" height="8" rx="1.5" fill="#1F6E43"/>
+  <rect x="34" y="70" width="6" height="12" rx="1.5" fill="#26ACF4"/>
+  <rect x="44" y="66" width="6" height="16" rx="1.5" fill="#EAB308"/>
+</svg>

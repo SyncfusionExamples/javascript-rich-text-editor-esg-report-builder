@@ -1,0 +1,269 @@
+/* ==========================================================================
+   ESG Report Builder – shell styling (the editor itself uses EJ2 Tailwind)
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: #f1f4f8;
+    color: #1f2937;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ------------------------------ Header ---------------------------------- */
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: linear-gradient(90deg, #0f4c3a 0%, #136f4f 55%, #1a9168 100%);
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; }
+
+.brand-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.brand h1 {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.2;
+    letter-spacing: 0.3px;
+}
+
+.brand p {
+    margin: 2px 0 0;
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.header-meta { display: flex; gap: 8px; align-items: center; }
+
+.pill {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.pill-green { background: rgba(76, 217, 149, 0.25); border-color: rgba(76, 217, 149, 0.5); }
+
+/* --------------------------- Configuration bar -------------------------- */
+.config-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+    padding: 12px 20px;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.config-item { display: flex; flex-direction: column; gap: 4px; }
+
+.config-item > label,
+.chk-label { font-size: 11px; font-weight: 600; color: #475569; }
+
+.config-item input[type="text"],
+.config-item select {
+    min-width: 170px;
+    padding: 7px 9px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+}
+
+.config-item-wide {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+}
+
+.chk-label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: #334155; font-weight: 500; }
+.chk-label input { cursor: pointer; }
+
+.actions { margin-left: auto; }
+
+/* ------------------------------ Buttons --------------------------------- */
+.btn {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #1f2937;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:hover { background: #f8fafc; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12); }
+
+.btn-primary {
+    background: #0f4c3a;
+    border-color: #0f4c3a !important;
+    color: #fff;
+    font-weight: 600;
+}
+
+.btn-primary:hover { background: #136f4f; }
+
+.btn-secondary {
+    background: #eef2ff;
+    border-color: #c7d2fe !important;
+    color: #3730a3;
+}
+
+.btn-secondary:hover { background: #e0e7ff; }
+
+.btn-ghost { border-color: transparent; }
+
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ------------------------------- Layout --------------------------------- */
+.app-body {
+    flex: 1;
+    display: flex;
+    min-height: 0; /* allows children with height:100% to shrink */
+}
+
+.sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
+    overflow-y: auto;
+    padding: 14px 16px;
+}
+
+.sidebar h2 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    color: #0f4c3a;
+}
+
+.sidebar-note {
+    font-size: 11.5px;
+    color: #64748b;
+    margin: 0 0 12px;
+    line-height: 1.45;
+}
+
+.metric-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background: #fafcff;
+}
+
+.metric-block h3 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #0f4c3a;
+}
+
+.metric-block label {
+    display: block;
+    font-size: 12px;
+    color: #475569;
+    margin-bottom: 8px;
+}
+
+.metric-block input {
+    display: block;
+    width: 100%;
+    margin-top: 3px;
+    padding: 6px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.hint-block {
+    border: 1px dashed #94a3b8;
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: #fffef5;
+}
+
+.hint-block h3 { margin: 0 0 6px; font-size: 12px; color: #92400e; }
+
+.hint-block ul { margin: 0; padding-left: 18px; font-size: 11.5px; color: #57534e; }
+.hint-block li { margin-bottom: 4px; }
+
+/* ------------------------------ Editor area ----------------------------- */
+.editor-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 12px 16px 0 16px;
+}
+
+.editor-chrome {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.chrome-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+#DocumentEditor { flex: 1; min-height: 420px; }
+
+#DocumentEditor .e-documenteditor {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.status-bar {
+    display: flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 4px 10px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #0f4c3a;
+    background: #e7f4ee;
+    border: 1px solid #bfe3cf;
+    border-radius: 6px;
+}
+
+.status-bar.error { color: #7f1d1d; background: #fde8e8; border-color: #f5c6c6; }
+
+/* --------------------------- Small screens ------------------------------ */
+@media (max-width: 980px) {
+    .app-body { flex-direction: column; }
+    .sidebar { width: auto; border-right: none; border-bottom: 1px solid #e2e8f0; }
+    .editor-wrap { padding: 12px; }
+    .config-bar .actions { margin-left: 0; }
+}
