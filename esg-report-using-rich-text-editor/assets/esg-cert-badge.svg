@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" width="140" height="140" role="img" aria-label="ESG certification badge">
+  <!-- Ribbon -->
+  <circle cx="70" cy="66" r="56" fill="#1F6E43"/>
+  <circle cx="70" cy="66" r="48" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-dasharray="4 5"/>
+  <!-- Leaf -->
+  <path d="M44 74 C44 54, 56 46, 96 44 C94 66, 84 78, 58 78 C50 78, 44 74, 44 74 Z"
+        fill="#FFFFFF"/>
+  <path d="M50 72 C58 62, 68 55, 78 49" stroke="#1F6E43" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Text -->
+  <text x="70" y="98" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif"
+        font-size="13" font-weight="700" fill="#FFFFFF">CERTIFIED</text>
+  <text x="70" y="112" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif"
+        font-size="9" font-weight="600" fill="#D8EFE1">ESG 2025 &middot; SAMPLE</text>
+</svg>

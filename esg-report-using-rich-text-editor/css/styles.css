@@ -1,0 +1,315 @@
+/* ============================================================================
+   ESG_Report_RTE - Application styles
+   Design tokens follow .codestudio/designs/DESIGN.md (VS Code-inspired light
+   theme adapted for an ESG document authoring tool).
+
+   Structure:
+     1. Design tokens (CSS custom properties, light + dark)
+     2. App shell & header
+     3. Action buttons
+     4. Draft status strip
+     5. Workspace layout (editor + preview)
+     6. Preview page (A4-like document)
+     7. RTE surface tweaks
+     8. Responsive & dark mode
+   ========================================================================== */
+
+/* 1. Design tokens --------------------------------------------------------- */
+:root {
+    /* Anchors (VS Code preset) */
+    --esg-foreground: #080B14;
+    --esg-accent: #26ACF4;
+
+    /* Surfaces */
+    --esg-bg: #E8F8FF;
+    --esg-surface: #F2FAFE;
+    --esg-border: #B9C6D0;
+
+    /* Semantic */
+    --esg-primary-text: #080B14;
+    --esg-secondary-text: #4A5A66;
+    --esg-success: #1F6E43;
+    --esg-success-bg: #EAF4EE;
+    --esg-warning: #8A5A00;
+    --esg-error: #B3261E;
+
+    /* Document page (print-like) */
+    --esg-page-bg: #FFFFFF;
+
+    /* Typography */
+    --esg-font-ui: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    --esg-font-doc: Georgia, 'Times New Roman', serif;
+
+    /* Spacing scale */
+    --esg-space-xs: 8px;
+    --esg-space-sm: 12px;
+    --esg-space-md: 16px;
+    --esg-space-lg: 24px;
+    --esg-space-xl: 32px;
+
+    /* Radii */
+    --esg-radius-sm: 4px;
+    --esg-radius-md: 6px;
+    --esg-radius-lg: 10px;
+
+    /* Elevation */
+    --esg-shadow-1: 0 1px 3px rgba(8, 11, 20, 0.10);
+    --esg-shadow-2: 0 6px 18px rgba(8, 11, 20, 0.14);
+}
+
+/* 2. App shell -------------------------------------------------------------- */
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+body.app-shell {
+    background: var(--esg-bg);
+    color: var(--esg-primary-text);
+    font-family: var(--esg-font-ui);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esg-space-md);
+    padding: var(--esg-space-sm) var(--esg-space-lg);
+    background: var(--esg-surface);
+    border-bottom: 1px solid var(--esg-border);
+    box-shadow: var(--esg-shadow-1);
+    flex-wrap: wrap;
+}
+
+.app-title {
+    display: flex;
+    align-items: center;
+    gap: var(--esg-space-sm);
+}
+
+.app-logo {
+    border-radius: var(--esg-radius-sm);
+}
+
+.app-title h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--esg-primary-text);
+}
+
+.app-subtitle {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--esg-secondary-text);
+}
+
+/* 3. Buttons ---------------------------------------------------------------- */
+.app-actions {
+    display: flex;
+    gap: var(--esg-space-xs);
+    flex-wrap: wrap;
+}
+
+.btn {
+    font-family: var(--esg-font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: var(--esg-radius-md);
+    border: 1px solid var(--esg-border);
+    background: var(--esg-page-bg);
+    color: var(--esg-primary-text);
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.btn:hover {
+    background: var(--esg-bg);
+    border-color: var(--esg-accent);
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--esg-accent);
+    outline-offset: 2px;
+}
+
+.btn-primary {
+    background: var(--esg-accent);
+    border-color: var(--esg-accent);
+    color: #FFFFFF;
+}
+
+.btn-primary:hover {
+    background: #1E9BD8;
+    border-color: #1E9BD8;
+    color: #FFFFFF;
+}
+
+.btn-outline {
+    background: transparent;
+}
+
+/* 4. Draft status strip ------------------------------------------------------ */
+.draft-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esg-space-md);
+    padding: 6px var(--esg-space-lg);
+    font-size: 12.5px;
+    color: var(--esg-secondary-text);
+    background: var(--esg-bg);
+    border-bottom: 1px solid var(--esg-border);
+}
+
+.draft-saved-at {
+    color: var(--esg-secondary-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.status-warn {
+    color: var(--esg-warning);
+    font-weight: 600;
+}
+
+/* 5. Workspace: editor + live preview --------------------------------------- */
+.workspace {
+    flex: 1;
+    display: flex;
+    gap: var(--esg-space-md);
+    padding: var(--esg-space-md) var(--esg-space-lg) var(--esg-space-lg);
+    align-items: stretch;
+    min-height: 0;
+}
+
+.editor-panel,
+.preview-panel {
+    background: var(--esg-surface);
+    border: 1px solid var(--esg-border);
+    border-radius: var(--esg-radius-lg);
+    box-shadow: var(--esg-shadow-1);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.editor-panel { flex: 1 1 58%; }
+.preview-panel { flex: 1 1 42%; max-width: 620px; }
+
+.panel-heading {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--esg-secondary-text);
+    padding: 10px var(--esg-space-md) 8px;
+    border-bottom: 1px solid var(--esg-border);
+}
+
+.esg-editor {
+    padding: 0 var(--esg-space-sm) var(--esg-space-sm);
+    min-height: 0;
+}
+
+.preview-scroll {
+    flex: 1;
+    overflow: auto;
+    padding: var(--esg-space-md);
+    background: repeating-linear-gradient(
+        135deg,
+        rgba(185, 198, 208, 0.10) 0 8px,
+        rgba(185, 198, 208, 0.16) 8px 16px
+    );
+}
+
+/* 6. Preview page - A4-like document ---------------------------------------- */
+.preview-page {
+    background: var(--esg-page-bg);
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 52px;
+    border: 1px solid var(--esg-border);
+    border-radius: var(--esg-radius-sm);
+    box-shadow: var(--esg-shadow-2);
+    min-height: 75%;
+}
+
+.preview-content {
+    font-family: var(--esg-font-doc);
+    font-size: 14.5px;
+    color: var(--esg-primary-text);
+    line-height: 1.65;
+}
+
+/* Render editor content inside the serif preview surface. */
+.preview-content h1 { font-size: 26px; text-align: center; margin: 0.4em 0; }
+.preview-content h2 { font-size: 19px; color: #1F6E43; margin: 1.1em 0 0.4em; }
+.preview-content h3 { font-size: 15.5px; margin: 1em 0 0.3em; }
+.preview-content ul, .preview-content ol { padding-left: 1.4em; }
+.preview-content li { margin: 0.25em 0; }
+.preview-content table { border-collapse: collapse; width: 100%; margin: 0.6em 0; }
+.preview-content th, .preview-content td { border: 1px solid #C7CDD2; padding: 6px 10px; text-align: left; }
+.preview-content img { max-width: 100%; height: auto; border-radius: var(--esg-radius-sm); }
+.preview-content a { color: #157147; }
+.preview-content hr { border: 0; border-top: 1px solid var(--esg-border); margin: 1.2em 0; }
+
+.preview-empty {
+    color: var(--esg-secondary-text);
+    text-align: center;
+    font-style: italic;
+    padding: var(--esg-space-xl) 0;
+}
+
+/* 7. RTE surface ------------------------------------------------------------- */
+.e-rte {
+    border-radius: var(--esg-radius-md);
+    overflow: hidden;
+}
+
+/* Keep pasted/uploaded images proportional inside the editor canvas. */
+.e-rte .e-rte-content img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* 8. Responsive & dark ------------------------------------------------------- */
+@media (max-width: 1100px) {
+    .workspace { flex-direction: column; }
+    .preview-panel { max-width: none; }
+}
+
+@media (max-width: 720px) {
+    .app-header { padding: var(--esg-space-sm) var(--esg-space-md); }
+    .workspace { padding: var(--esg-space-sm) var(--esg-space-md); }
+    .preview-page { padding: 24px; }
+    .app-actions .btn { padding: 7px 10px; font-size: 12.5px; }
+}
+
+/* Dark mode: lightness-inverted surfaces, accent preserved (see DESIGN.md). */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --esg-primary-text: #E8F0F6;
+        --esg-secondary-text: #A9B7C2;
+        --esg-bg: #10161B;
+        --esg-surface: #18202A;
+        --esg-page-bg: #F5FBFE;      /* document page stays light for print parity */
+        --esg-border: #33414E;
+        --esg-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.40);
+        --esg-shadow-2: 0 6px 18px rgba(0, 0, 0, 0.50);
+    }
+
+    .app-title h1 { color: var(--esg-primary-text); }
+
+    .btn { background: #1E2833; color: var(--esg-primary-text); }
+    .btn:hover { background: #26313D; border-color: var(--esg-accent); }
+    .btn-primary { background: var(--esg-accent); color: #08121A; }
+    .btn-primary:hover { background: #1E9BD8; color: #08121A; }
+
+    .panel-heading { color: var(--esg-secondary-text); }
+}
