@@ -148,6 +148,9 @@
                     <button id="btnReset" class="btn" type="button">&#8635; Reset to template</button>
                 </div>
                 <div class="chrome-buttons">
+                    <button id="btnInsertField" class="btn" type="button">&#9881; Insert Field</button>
+                    <div id="mergeFieldDrop"></div>
+                    <button id="btnRunMerge" class="btn btn-secondary" type="button">&#9998; Run Mail Merge</button>
                     <button id="btnExportDocx" class="btn btn-secondary" type="button">&#128190; Save as .docx</button>
                     <button id="btnExportSfdt" class="btn btn-secondary" type="button">&#128190; Save draft (.sfdt)</button>
                     <button id="btnPrint" class="btn btn-ghost" type="button">&#128424; Print</button>
@@ -162,6 +165,7 @@
     <input type="file" id="fileUpload" accept=".sfdt" style="display:none" />
 
     <!-- App script (data + builder + UI wiring combined) -->
+    <script src="js/mail-merge.js" type="text/javascript"></script>
     <script src="esg-app.js" type="text/javascript"></script>
 </body>
 </html>
