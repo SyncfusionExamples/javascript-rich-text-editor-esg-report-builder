@@ -3,8 +3,7 @@
 A single-page **ESG sustainability report builder** POC built on the **Syncfusion
 JavaScript (ES5) Rich Text Editor** — no build tools, no bundler, no framework.
 
-A sustainability manager loads a predefined ESG template, edits and formats the
-report (bold headings, colors, lists, hyperlinks, KPI tables), inserts evidence
+A sustainability manager loads a predefined ESG template, add new placeholders, edits and formats the report (bold headings, colors, lists, hyperlinks, KPI tables), inserts evidence
 images, watches a live A4-style preview, and exports the result as a real
 **Word (.docx)** or **PDF** document using the RTE's **inbuilt Import/Export
 features**.
@@ -39,7 +38,8 @@ npx http-server esg-report-rte-web-frontend -p 8080 -o
 
 | Step | Where | RTE features demonstrated |
 | ---- | ----- | -------------------------- |
-| 1. Load template | **Create New Report** button | Preloaded content, headings, lists, structure |
+| 1. Load template | **Create New Report** button | Preloaded template content, headings, lists, structure |
+| 1. Merge Document | **Merge Document** button | Template placeholders are replaced with actual data |
 | 2. Edit & format | RTE toolbar | Bold, font/color, alignment, lists, links, **KPI table** |
 | 3. Insert evidence | Toolbar **Image** (+ quick toolbar) | Image insert, resize, align, alt text |
 | 4. Preview | Right panel | WYSIWYG editing, professional A4 document layout |
@@ -83,7 +83,7 @@ Proof of concept that generates a rich, fully-editable **ESG (Environmental, Soc
 |---|---|
 | Word-style UI | `DocumentEditorContainer` with **Ribbon toolbar** (`toolbarMode: "Ribbon"`) — Home, Insert, Layout, Review, View, References, plus contextual tabs (Table Design, Table Layout, Header & Footer…) |
 | Document *generation* | The SFDT builder programmatically creates a multi-section report: cover page, TOC, KPI tables, native charts, site tables, appendix |
-| Data-driven reports | Edit the ESG metrics in the sidebar → **Generate report** re-renders everything (tables, charts, year-over-year calculations) |
+| Data-driven reports | Add or edit the existing mrege field placeholders -> **Run Mail Merge** to replace placeholders with actual data. Also, Edit the ESG metrics in the sidebar → **Generate report** re-renders everything (tables, charts, year-over-year calculations) |
 | Charts | Line (GHG emissions), column (LTIFR), doughnut (board composition) — embedded as images |
 | Auto TOC | Inserted programmatically via `insertTableOfContents()` on a bookmark placeholder |
 | Word compatibility | Export to `.docx` client-side and open in Microsoft Word |
@@ -98,10 +98,11 @@ Open `index.html` file
 Then:
 
 1. A report is generated automatically on load.
-2. Change the **company / period / scope / framework** or any **metric** in the sidebar.
-3. Click **▶ Generate report** to rebuild the document.
-4. Edit it like Word — the Ribbon gives you formatting, tables, images, hyperlinks, headers/footers, track changes and comments.
-5. Export via **Save as .docx**, save a `.sfdt` draft, or print.
+2. Click **Run Mail Merge** to merge data to the placeholders in the document.
+3. Change the **company / period / scope / framework** or any **metric** in the sidebar.
+4. Click **▶ Generate report** to rebuild the document.
+5. Edit it like Word — the Ribbon gives you formatting, tables, images, hyperlinks, headers/footers, track changes and comments.
+6. Export via **Save as .docx**, save a `.sfdt` draft, or print.
 
 > Opening `.docx` files directly (instead of generating) requires the optional Syncfusion Word Processor web service — see [Server (optional)](#-server-optional) below. Generation → edit → export stays fully client-side.
 

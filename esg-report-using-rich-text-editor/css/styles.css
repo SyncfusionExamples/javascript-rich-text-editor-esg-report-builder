@@ -259,6 +259,24 @@ body.app-shell {
 .preview-content a { color: #157147; }
 .preview-content hr { border: 0; border-top: 1px solid var(--esg-border); margin: 1.2em 0; }
 
+/* Mail-merge placeholders rendered inside the live preview. Highlighted
+   chips make {{FieldName}} tokens visible without leaking into the saved
+   editor value. */
+.preview-content .merge-token {
+    display: inline-block;
+    padding: 1px 6px;
+    margin: 0 1px;
+    background: var(--esg-success-bg, #EAF4EE);
+    border: 1px solid var(--esg-success, #1F6E43);
+    border-radius: 12px;
+    color: var(--esg-success, #1F6E43);
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 0.9em;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
 .preview-empty {
     color: var(--esg-secondary-text);
     text-align: center;

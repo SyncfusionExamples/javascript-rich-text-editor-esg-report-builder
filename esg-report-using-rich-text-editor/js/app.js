@@ -21,6 +21,10 @@
 
     var rte = null;
     var els = {};
+    /* Whether the {{FieldName}} token highlighting should be applied on the
+       next preview pass. Toggled off once the document has been merged so we
+       don't keep repainting thousands of <mark> nodes each keystroke. */
+    var highlightTokens = true;
 
     /* ------------------------------------------------------------------ */
     /* DOM helpers (ES5)                                                   */
@@ -48,6 +52,15 @@
     /* Preview (Step 4)                                                    */
     /* ------------------------------------------------------------------ */
 
+    /* Renders merge {{FieldName}} chips on a copy of the HTML so the live
+       preview highlights remaining tokens. The editor value is never touched
+       here (highlighting is preview-only). */
+    function highlightTokensInHtml(html) {
+        if (!html) { return html; }
+        return String(html).replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g,
+            '<span class="merge-token" title="Merge field: $1">{{$1}}</span>');
+    }
+
     function updatePreview() {
         if (!rte || !els.previewContent) { return; }
         var html = rte.getHtml();
@@ -55,7 +68,7 @@
             els.previewContent.innerHTML = '<p class="preview-empty">Click <strong>Create New Report</strong> to load the ESG template.</p>';
             return;
         }
-        els.previewContent.innerHTML = html;
+        els.previewContent.innerHTML = highlightTokens ? highlightTokensInHtml(html) : html;
     }
 
     /* ------------------------------------------------------------------ */
@@ -90,6 +103,9 @@
                 type: 'Expand',
                 items: [
                     'Undo', 'Redo', '|',
+                    /* Step 6 - mail merge custom toolbar. */
+                    { tooltipText: 'Mail Merge', template: '<button id="rteMergeDrop"></button>' },
+                   '|',
                     'Formats', 'FontName', 'FontSize', 'FontColor', 'BackgroundColor', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', 'ClearFormat', '|',
                     'NumberFormatList', 'BulletFormatList', 'Outdent', 'Indent', '|',
@@ -123,6 +139,17 @@
             exportPdf: {
                 serviceUrl: AppConfig.services.baseUrl + AppConfig.services.exportPdfPath,
                 fileName: AppConfig.report.defaultFileName + '.pdf'
+            },
+
+            /* Mention lets authors press {{ in the editor to see a list of
+               fields - matches the official RTE mail merge sample. */
+            mentionSettings: {
+                dataSource: MailMerge.FIELDS,
+                fields: { text: 'text', value: 'value' },
+                triggerChar: '{{',
+                allowSpaces: true,
+                showMentionChar: false,
+                suffixText: '}}'
             },
 
             /* Document-oriented font & format dropdowns. */
@@ -183,8 +210,14 @@
             /* Lifecycle events ------------------------------------------ */
             created: function () {
                 rte = editor;
+                /* Render the custom toolbar widgets after the EJ2 toolbar
+                   layout settles, otherwise #rteMergeDrop doesn't exist yet. */
+                setTimeout(function () {
+                    attachMergeFieldDropdown();
+                    attachMergeDocumentButton();
+                }, 0);
                 updatePreview();
-                setStatus('Editor ready.');
+                setStatus('Editor ready. Use the Insert Field button to add merge tokens.');
                 bindActions();
             },
 
@@ -235,6 +268,101 @@
         return true;
     }
 
+    /* ------------------------------------------------------------------ */
+    /* Mail-merge toolbar widgets                                          */
+    /* ------------------------------------------------------------------ */
+
+    /* Drop-down holding every MailMerge field. Selecting an entry inserts
+       a {{Field}} token at the current cursor in the editor. */
+    function attachMergeFieldDropdown() {
+        var host = document.getElementById('rteMergeDrop');
+        if (!host || !ej.splitbuttons || !ej.splitbuttons.DropDownButton) { return; }
+        /* Avoid duplicate widget if the toolbar re-renders. */
+        if (host.firstChild && host.firstChild.classList &&
+            host.firstChild.classList.contains('e-dropdown-btn')) { return; }
+
+        var dd = new ej.splitbuttons.DropDownButton({
+            iconCss: 'e-icons e-fields',
+            content: 'Insert Field',
+            items: MailMerge.fieldLabels.map(function (lbl) {
+                return { text: lbl };
+            }),
+            select: function (e) {
+                var idx = MailMerge.fieldLabels.indexOf(e.item.text);
+                if (idx < 0) { return; }
+                insertMergeToken(MailMerge.fieldValues[idx]);
+            }
+        });
+        dd.appendTo(host);
+    }
+
+    /* Plain Merge button - expands every {{Field}} token across all
+       current records and replaces the editor value with the merged output. */
+    var mergeBtnInstance = null;
+    function attachMergeDocumentButton() {
+        var host = document.getElementById('rteMergeGo');
+        if (!host || !ej.buttons || !ej.buttons.Button) { return; }
+        if (!host.firstChild) {
+            mergeBtnInstance = new ej.buttons.Button({
+                iconCss: 'e-icons e-mail-merge',
+                content: 'Merge',
+                cssClass: 'e-flat',
+                isPrimary: true
+            });
+            mergeBtnInstance.appendTo(host);
+        }
+        /* EJ2 exposes event handlers via .on(); fall back to raw DOM click
+           if the instance API differs. The __bound flag prevents multiple
+           listeners if the toolbar re-renders. */
+        try {
+            var inst = ej.buttons.Button.getInstance
+                ? ej.buttons.Button.getInstance(host)
+                : null;
+            if (inst && !inst.__mergeBound) {
+                inst.__mergeBound = true;
+                mergeBtnInstance = inst;
+                if (typeof inst.on === 'function') { inst.on('click', runMailMerge); }
+            }
+        } catch (e) { /* swallow - DOM fallback below */ }
+        var inner = host.querySelector('button');
+        if (inner && !inner.__mergeBound) {
+            inner.__mergeBound = true;
+            inner.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                runMailMerge();
+            });
+        }
+    }
+
+    function insertMergeToken(fieldName) {
+        if (!rte || !fieldName) { return; }
+        if (typeof rte.executeCommand === 'function') {
+            rte.executeCommand('insertText', '{{' + fieldName + '}}');
+        } else {
+            /* Fallback: push into value. Trigger re-render. */
+            var html = (typeof rte.getHtml === 'function') ? rte.getHtml() : '';
+            rte.value = html + '{{' + fieldName + '}}';
+            if (rte.dataBind) { rte.dataBind(); }
+        }
+        updatePreview();
+    }
+
+    function runMailMerge() {
+        if (!rte) { return; }
+        var count = MailMerge.applyMerge(rte);
+        if (!count) {
+            setStatus('<span class="status-warn">Mail merge skipped: no records configured.</span>');
+            return;
+        }
+        /* After expansion there are no more placeholder tokens, so suppress
+           the chip-highlight to keep the preview HTML clean. */
+        highlightTokens = false;
+        updatePreview();
+        saveDraft(false);
+        setStatus('Merged document across ' + count + ' record'
+            + (count === 1 ? '' : 's') + '. Review and export when ready.');
+    }
+
     function bindActions() {
         /* Step 1 - load the predefined ESG template. */
         els.btnCreateNew.onclick = function () {
@@ -247,9 +375,11 @@
             rte.refreshUI && rte.refreshUI();
             /* Re-read after the asynchronous property pipeline settles. */
             setTimeout(function () {
+                /* Reset the highlight flag when loading a fresh template. */
+                highlightTokens = true;
                 updatePreview();
                 saveDraft(true);
-                setStatus('ESG template loaded. Format the sections, insert KPI tables, and add evidence.');
+                setStatus('ESG template loaded. Use Insert Field or press {{ in the editor for merge fields.');
             }, 250);
         };
 
@@ -257,6 +387,10 @@
         els.btnSaveDraft.onclick = function () {
             saveDraft(false);
         };
+
+        /* Header Merge Document button (matches the in-toolbar Merge
+           button - duplicates the click target for discoverability). */
+        els.btnMailMerge.onclick = function () { runMailMerge(); };
 
         /* Step 5 - inbuilt RTE exports (service-backed .docx / .pdf). */
         els.btnExportWord.onclick = function () {
@@ -275,6 +409,14 @@
         window.addEventListener('beforeunload', function () {
             saveDraft(true);
         });
+
+        /* Re-attach mail-merge widgets after the first actionComplete so
+           they survive any toolbar re-render. (creates once on created too) */
+        if (mergeBtnInstance && typeof mergeBtnInstance.on === 'function' &&
+            !mergeBtnInstance.__mergeBound) {
+            mergeBtnInstance.__mergeBound = true;
+            mergeBtnInstance.on('click', runMailMerge);
+        }
     }
 
     /* ------------------------------------------------------------------ */
@@ -287,6 +429,7 @@
         els.previewContent = $('previewContent');
         els.btnCreateNew = $('btnCreateNew');
         els.btnSaveDraft = $('btnSaveDraft');
+        els.btnMailMerge = $('btnMailMerge');
         els.btnExportWord = $('btnExportWord');
         els.btnExportPdf = $('btnExportPdf');
 

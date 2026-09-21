@@ -57,7 +57,9 @@ var AppConfig = (function () {
         /** Autosave cadence. Also drives how often the preview refreshes. */
         saveIntervalMs: 500,
 
-        /** Sample-data mode: prefill the template with demo content (POC default). */
+        /** Sample-content mode: when true, load the rich sample template
+         *  (still keeps {{FieldName}} tokens in the body). When false, load
+         *  the minimal placeholder template. */
         prefillSampleData: true
     };
 })();

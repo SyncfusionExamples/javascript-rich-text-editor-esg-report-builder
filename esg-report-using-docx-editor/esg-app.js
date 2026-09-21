@@ -103,6 +103,38 @@ var EsgReportBuilder = (function (data) {
         return { characterFormat: cf(fmt || {}), text: String(text) };
     }
 
+    /* ------------------------------------------------------------------
+       Mail-merge MERGEFIELD helper
+       ------------------------------------------------------------------
+       Returns an array of five inline nodes that together form a Word
+       MERGEFIELD field - this is the same shape that the DOCX Editor
+       produces when you call editor.editor.insertField("MERGEFIELD X",
+       "<<X>>"). On the initial load we render these in place of literal
+       values, so the user sees «FieldName» placeholders (just like in
+       Word's mail-merge). When the user clicks "Run Mail Merge" we walk
+       the SFDT, swap the displayed "result" text per record, and clone
+       the body section so the merged document contains one personalised
+       copy per record.
+       ------------------------------------------------------------------ */
+    function mergeField(fieldName, fmt) {
+        var baseFmt = fmt || {};
+        var codeText = "MERGEFIELD " + fieldName + "  \\* MERGEFORMAT ";
+        var resultText = "\u00ab" + fieldName + "\u00bb";  // «FieldName»
+        return [
+            { fieldType: 0, characterFormat: cf(baseFmt) },                 // Begin
+            { text: codeText,   characterFormat: cf(baseFmt) },              // Code (hidden)
+            { fieldType: 1, characterFormat: cf(baseFmt) },                 // Separate
+            { text: resultText, characterFormat: cf(baseFmt) },             // Result (visible)
+            { fieldType: 2, characterFormat: cf(baseFmt) }                  // End
+        ];
+    }
+
+    /* Wraps mergeField() in an array so it can be concatenated directly
+       into a paragraph's inlines list alongside other runs. */
+    function mergeFieldInline(fieldName, fmt) {
+        return mergeField(fieldName, fmt);
+    }
+
     function pf(o) {
         o = o || {};
         var base = {
@@ -461,15 +493,30 @@ var EsgReportBuilder = (function (data) {
         return h;
     }
 
-    /* Cover page */
+    /* Cover page - the company name, reporting period, framework and
+       region are rendered as MERGEFIELD placeholders so the initial
+       document clearly shows the mail-merge variables. When the user
+       runs Mail Merge, each record's values are written into the result
+       text of every MERGEFIELD. */
     function coverBlocks(cfg) {
+        /* Build the company-name MERGEFIELD then uppercase only the
+           *visible* result run (after the field separator). Uppercasing
+           the field code as well would corrupt the lookup key Word uses
+           to bind the field to a data source record. */
+        var companyRuns = mergeField("CompanyName", { bold: true, fontSize: 26, fontColor: c(T.primary) });
+        var seenSeparate = false;
+        for (var ci = 0; ci < companyRuns.length; ci++) {
+            if (companyRuns[ci].fieldType === 1) { seenSeparate = true; continue; }
+            if (seenSeparate && companyRuns[ci].text) {
+                companyRuns[ci].text = companyRuns[ci].text.toUpperCase();
+            }
+        }
         return [
             spacer(70),
-            para([run(cfg.company.toUpperCase(), { bold: true, fontSize: 26, fontColor: c(T.primary) })],
-                { textAlignment: "Center", afterSpacing: 6 }),
+            para(companyRuns, { textAlignment: "Center", afterSpacing: 6 }),
             para([run("Sustainability & ESG Report", { fontSize: 17, fontColor: c(T.slate) })],
                 { textAlignment: "Center", afterSpacing: 26 }),
-            bannerBlock(cfg.period + "   \u2022   " + cfg.framework + " disclosure   \u2022   " + cfg.region),
+            bannerMergeBlock(),
             spacer(30),
             para([run(
                 "This report presents our environmental, social and governance performance for " +
@@ -479,6 +526,14 @@ var EsgReportBuilder = (function (data) {
                 { textAlignment: "Justify", afterSpacing: 20 }),
             para([run("Report generated on " + nowStamp(), { fontSize: 10, fontColor: c(T.slate) })],
                 { textAlignment: "Center", afterSpacing: 40 }),
+            /* Personalised greeting line: "Prepared for: «RecipientName»".
+               Hidden until the user runs mail merge, but already wired
+               into the document so the merge expands correctly. */
+            para(
+                [run("Prepared for: ", { fontSize: 12, fontColor: c(T.primary) })]
+                    .concat(mergeField("RecipientName", { bold: true, fontSize: 12, fontColor: c(T.primary) })),
+                { textAlignment: "Center", afterSpacing: 16 }
+            ),
             para([run("All figures in this proof of concept are illustrative.", {
                 italic: true, fontSize: 9, fontColor: c(T.slate)
             })], { textAlignment: "Center" }),
@@ -488,9 +543,80 @@ var EsgReportBuilder = (function (data) {
         ];
     }
 
+    /* Banner row rendered as three MERGEFIELD cells - ReportingPeriod,
+       Framework and Region. Each cell shows its «FieldName» placeholder
+       on first load. */
+    function bannerMergeBlock() {
+        var widthPct = [22, 36, 42];
+        var fields = ["ReportingPeriod", "Framework", "Region"];
+        var cells = [];
+        for (var i = 0; i < 3; i++) {
+            var fieldCell = {
+                blocks: [{
+                    paragraphFormat: pf({ textAlignment: "Center", afterSpacing: 0, lineSpacing: 1 }),
+                    characterFormat: cf({}),
+                    inlines: mergeField(fields[i], {
+                        bold: true, fontSize: 11, fontColor: c(T.white)
+                    }).concat([run(" disclosure ", { fontSize: 11, fontColor: c(T.white) })])
+                }],
+                cellFormat: {
+                    borders: NO_BORDERS,
+                    shading: { backgroundColor: c(T.primary), foregroundColor: "empty", textureStyle: "TextureNone" },
+                    preferredWidth: widthPct[i],
+                    preferredWidthType: "Percent",
+                    cellWidth: Math.round(CONTENT_W * widthPct[i]) / 100,
+                    columnSpan: 1,
+                    rowSpan: 1,
+                    verticalAlignment: "Center"
+                },
+                columnIndex: i
+            };
+            cells.push(fieldCell);
+        }
+        /* Insert separators between cells using dot runs. */
+        if (cells.length === 3) {
+            cells[0].blocks[0].inlines = cells[0].blocks[0].inlines.concat([
+                run("   \u2022   ", { fontSize: 11, fontColor: c(T.white) })
+            ]);
+            cells[1].blocks[0].inlines = cells[1].blocks[0].inlines.concat([
+                run("   \u2022   ", { fontSize: 11, fontColor: c(T.white) })
+            ]);
+        }
+        return {
+            rows: [{
+                cells: cells,
+                rowFormat: {
+                    height: 34, allowBreakAcrossPages: true, heightType: "AtLeast",
+                    isHeader: false, borders: NO_BORDERS,
+                    gridBefore: 0, gridBeforeWidth: 0, gridBeforeWidthType: "Point",
+                    gridAfter: 0, gridAfterWidth: 0, gridAfterWidthType: "Point"
+                }
+            }],
+            grid: widthPct.map(function (w) { return Math.round(CONTENT_W * w) / 100; }),
+            tableFormat: {
+                borders: NO_BORDERS,
+                shading: { backgroundColor: c("FFFFFF"), foregroundColor: "empty", textureStyle: "TextureNone" },
+                cellSpacing: 0, leftIndent: 0, tableAlignment: "Left",
+                topMargin: 8, rightMargin: 8, leftMargin: 8, bottomMargin: 8,
+                preferredWidth: 100, preferredWidthType: "Percent",
+                bidi: false, allowAutoFit: true
+            },
+            description: null, title: null
+        };
+    }
+
     /* Contents (TOC placeholder replaced programmatically after open) */
     function contentsBlocks() {
         return [
+            /* Personalised greeting line at the top of the body section.
+               Each cloned body section (one per mail-merge record) starts
+               with this paragraph so the recipient name is visible per
+               record when the merge runs. */
+            para(
+                [run("Prepared for: ", { bold: true, fontSize: 12, fontColor: c(T.primary) })]
+                    .concat(mergeField("RecipientName", { bold: true, fontSize: 12, fontColor: c(T.primary) })),
+                { afterSpacing: 8 }
+            ),
             para([run("Contents", { bold: true, fontSize: 14.5, fontColor: c(T.primary) })],
                 { styleName: "Normal", afterSpacing: 10, lineSpacing: 1.1 }),
             {
@@ -877,8 +1003,394 @@ container.serviceUrl = 'https://document.syncfusion.com/web-services/docx-editor
 
     buildReport(true);
     wireUpUi();
+    /* Wire mail-merge widgets after the editor is ready (the drop-down
+       host depends on the EJ2 buttons module being present). */
+    attachMailMergeWidgets();
     setStatus("Report generated. The document above is fully editable like Microsoft Word.");
 });
+
+/* ========================================================================== */
+/* 4. Mail merge wiring                                                       */
+/* ========================================================================== */
+
+function attachMailMergeWidgets() {
+    /* Insert Field drop-down -> containing every MailMerge field. We use
+       the standalone DropDownButton (same pattern as the official JS ES5
+       mail-merge demo) so users can insert MERGEFIELDs anywhere in the
+       document. */
+    var ddHost = document.getElementById("mergeFieldDrop");
+    if (ddHost) { ddHost.style.display = "inline-block"; }
+    if (ddHost && ej.splitbuttons && ej.splitbuttons.DropDownButton) {
+        if (!ddHost.firstChild) {
+            new ej.splitbuttons.DropDownButton({
+                iconCss: "e-icons e-fields",
+                content: "Fields",
+                items: MailMerge.fieldLabels.map(function (l) { return { text: l }; }),
+                select: function (e) {
+                    var idx = MailMerge.fieldLabels.indexOf(e.item.text);
+                    if (idx < 0) { return; }
+                    insertMergeFieldAtCursor(MailMerge.fieldValues[idx]);
+                }
+            }).appendTo(ddHost);
+        }
+    }
+
+    /* Insert Field button (when DropDownButton didn't load - keep the
+       buttons functional). */
+    var btnInsertField = document.getElementById("btnInsertField");
+    if (btnInsertField) {
+        btnInsertField.addEventListener("click", function () {
+            /* Fall back to the first field; the dropdown gives full list. */
+            var field = MailMerge.fieldValues[0];
+            insertMergeFieldAtCursor(field);
+        });
+    }
+
+    var btnRunMerge = document.getElementById("btnRunMerge");
+    if (btnRunMerge) {
+        btnRunMerge.addEventListener("click", function () { runMailMerge(); });
+    }
+}
+
+/* Insert a Word MERGEFIELD <FieldName> at the current selection. The
+   built-in API resolves to a real native DOCX field when the document is
+   exported, so the file remains valid for Word/Outlook workflows.
+   Syncfusion's editor.insertField expects (fieldCode, fieldResult):
+     - fieldCode   = 'MERGEFIELD <Name>  \\* MERGEFORMAT '
+     - fieldResult = '<<Name>>'
+   We pass both so the field's visible placeholder matches what Word
+   displays when the field is unmerged. */
+function insertMergeFieldAtCursor(field) {
+    if (!editor || !editor.editor) {
+        setStatus("Editor not ready.", true);
+        return;
+    }
+    try {
+        var code = "MERGEFIELD " + field + "  \\* MERGEFORMAT ";
+        var result = "\u00ab" + field + "\u00bb";
+        /* The 2-arg overload exists on EJ2 18.4+; the legacy single-arg
+           overload still works for compatibility - try it first, fall
+           back to the older API if it isn't available. */
+        try {
+            editor.editor.insertField(code, result);
+        } catch (innerErr) {
+            editor.editor.insertField(code);
+        }
+        setStatus("Inserted merge field <b>\u00ab" + field + "\u00bb</b> at the cursor.");
+    } catch (e) {
+        console.error("insertField failed", e);
+        setStatus("Could not insert merge field: " + e.message, true);
+    }
+}
+
+/* Send the current SFDT + MailMerge.SAMPLE_RECORDS to the configured
+   service URL (/MailMerge) when available. When the Syncfusion web
+   service is reachable the returned SFDT is opened in the editor.
+   When it is not reachable (the default for this offline POC) we
+   perform the merge entirely client-side: the cover and body sections
+   of the source document are deep-cloned per record, the visible
+   MERGEFIELD result text is replaced with the record's value, and the
+   resulting multi-record document is loaded back into the editor.
+   Either way the user gets a real merged Word document they can save
+   as .docx. */
+function runMailMerge() {
+    if (!editor || typeof editor.serialize !== "function") {
+        setStatus("Editor not ready.", true);
+        return;
+    }
+    var records = MailMerge.SAMPLE_RECORDS;
+    if (!records || !records.length) {
+        setStatus("No merge records configured.", true);
+        return;
+    }
+
+    var sfdtString = "";
+    try { sfdtString = editor.serialize(); } catch (e) {
+        setStatus("Could not serialize SFDT: " + e.message, true);
+        return;
+    }
+    if (!sfdtString) {
+        setStatus("Editor serialization returned an empty document.", true);
+        return;
+    }
+
+    /* Prefer the hosted mail-merge endpoint if the Syncfusion service is
+       reachable. Many corporate networks / offline POCs cannot reach it,
+       so we always have a working client-side fallback. */
+    var endpoint = (container && container.serviceUrl) ? (container.serviceUrl + "MailMerge") : "";
+    if (endpoint) {
+        setStatus("Posting SFDT + " + records.length + " records to " + endpoint + "...");
+        postToMailMergeEndpoint(endpoint, sfdtString, records,
+            function onOk(merged) {
+                try {
+                    editor.open(merged);
+                    setStatus("Merged document opened (" + records.length + " records). Use Save as .docx to export.");
+                } catch (openErr) {
+                    console.error(openErr);
+                    setStatus("Merged SFDT received but could not be opened in the editor. Falling back to client-side merge.", true);
+                    applyLocalMailMerge(sfdtString, records);
+                }
+            },
+            function onFail() {
+                setStatus("MailMerge endpoint unreachable. Performing client-side merge instead.", true);
+                applyLocalMailMerge(sfdtString, records);
+            }
+        );
+    } else {
+        applyLocalMailMerge(sfdtString, records);
+    }
+}
+
+/* HTTP POST helper for the MailMerge endpoint. Uses ej.data.ajax when
+   available (matches the Syncfusion ES5 web-service samples), falls back
+   to fetch() when it isn't. */
+function postToMailMergeEndpoint(endpoint, sfdtString, records, onOk, onFail) {
+    var payload = JSON.stringify({ sfdt: sfdtString, records: records });
+
+    function doneWithSuccess(raw) {
+        try {
+            var parsed = JSON.parse(raw);
+            onOk(JSON.stringify(parsed));
+        } catch (e) {
+            onOk(raw);
+        }
+    }
+
+    if (typeof ej !== "undefined" && ej.data && typeof ej.data.ajax === "function") {
+        try {
+            ej.data.ajax(endpoint, "POST", payload, {
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (raw) { doneWithSuccess(typeof raw === "string" ? raw : JSON.stringify(raw)); },
+                error: onFail
+            });
+            return;
+        } catch (e) { /* fall through to fetch */ }
+    }
+    if (typeof fetch === "function") {
+        fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+            body: payload
+        }).then(function (res) {
+            if (!res.ok) { throw new Error("HTTP " + res.status); }
+            return res.text();
+        }).then(doneWithSuccess).catch(onFail);
+        return;
+    }
+    onFail();
+}
+
+/* ------------------------------------------------------------------
+   Pure client-side mail merge.
+   ------------------------------------------------------------------
+   Strategy: take the verbose SFDT produced by EsgReportBuilder.build()
+   (we cached it the last time the report was generated - see
+   buildReport()), walk every inline in the cover + body sections,
+   locate the MERGEFIELD field markers (fieldType 0/1/2 with the field
+   code text between them) and substitute the visible "result" run with
+   the value from the active record. Then build a new SFDT containing
+   the cover section once, followed by one cloned body section per
+   record (separated by a page break), so the resulting document reads
+   like one personalized report per recipient.
+   ------------------------------------------------------------------ */
+function applyLocalMailMerge(sfdtString, records) {
+    /* Prefer the cached verbose SFDT - the editor's serialized form
+       uses an "optimized" SFDT shape (sec/secpr/b/i/pf/cf/tlp/ft) that
+       doesn't use fieldType markers and is harder to walk reliably.
+       Falling back to sfdtString only when the cache is missing. */
+    var sfdt = verboseSfdtCache;
+    if (!sfdt) {
+        try { sfdt = JSON.parse(sfdtString); } catch (e) {
+            setStatus("Cannot parse SFDT before merge: " + e.message, true);
+            return;
+        }
+    }
+    if (!sfdt || !sfdt.sections || !sfdt.sections.length) {
+        setStatus("Cannot merge: the document has no sections.", true);
+        return;
+    }
+
+    /* First section is the cover (kept once, with the FIRST record's
+       values merged in - that's the standard Word mail-merge behaviour:
+       the cover letter is shown with the active record). Subsequent
+       body sections are duplicated per record. */
+    var coverSection = sfdt.sections[0];
+    var bodySections = sfdt.sections.slice(1);
+
+    /* Cover gets the first record's data (Word's "preview" record). */
+    var clonedCover = deepCloneSection(coverSection);
+    expandMergeFieldsInSection(clonedCover, records[0] || {});
+
+    /* Build one cloned body per record. */
+    var mergedSections = [clonedCover];
+    for (var r = 0; r < records.length; r++) {
+        var recClone = (bodySections.length > 0)
+            ? deepCloneSection(bodySections[0])
+            : { blocks: [], headersFooters: clonedCover.headersFooters || {}, sectionFormat: clonedCover.sectionFormat };
+        expandMergeFieldsInSection(recClone, records[r]);
+
+        /* Insert a divider paragraph between records (page break) so the
+           final document reads as one continuous personalised report.
+           We inline the paragraphFormat / characterFormat shape here
+           rather than reuse the EsgReportBuilder helpers (pf, cf) -
+           those live inside the EsgReportBuilder IIFE and aren't visible
+           to this top-level function. */
+        if (r > 0) {
+            var divider = {
+                paragraphFormat: {
+                    styleName: "Normal",
+                    listFormat: {},
+                    beforeSpacing: 0,
+                    afterSpacing: 0,
+                    lineSpacing: 1,
+                    lineSpacingType: "Multiple",
+                    textAlignment: "Left"
+                },
+                characterFormat: {
+                    bold: false, italic: false,
+                    fontSize: 10.5, fontFamily: "Calibri",
+                    fontColor: "#FFFFFFAA", underline: "None"
+                },
+                inlines: [{
+                    text: "",
+                    characterFormat: {
+                        bold: false, italic: false,
+                        fontSize: 10.5, fontFamily: "Calibri",
+                        fontColor: "#FFFFFFAA", underline: "None"
+                    },
+                    breakType: 1 /* Page */
+                }]
+            };
+            recClone.blocks = [divider].concat(recClone.blocks || []);
+        }
+        mergedSections.push(recClone);
+    }
+
+    var mergedSFDT = deepClone(sfdt);
+    mergedSFDT.sections = mergedSections;
+    /* Bump the document name so a Save-as-docx reflects the merge run. */
+    try {
+        if (typeof editor.documentName === "string" || !editor.documentName) {
+            editor.documentName = "ESG-Report-Merged-" + records.length + "Recipients";
+        }
+    } catch (e) { /* non-fatal */ }
+
+    try {
+        editor.open(JSON.stringify(mergedSFDT));
+        setStatus("Mail merge complete: " + records.length + " personalised record" +
+            (records.length === 1 ? "" : "s") + ". Use Save as .docx to export the merged file.");
+    } catch (openErr) {
+        console.error(openErr);
+        setStatus("Mail merge failed: " + openErr.message, true);
+    }
+}
+
+/* ------------------------------------------------------------------
+   SFDT walkers - traverse every paragraph, table and cell looking
+   for MERGEFIELD inlines and rewriting their display result.
+   ------------------------------------------------------------------ */
+function expandMergeFieldsInSection(section, record) {
+    if (!section || !section.blocks) { return; }
+    walkBlocks(section.blocks, function (block) {
+        expandMergeFieldsInParagraph(block, record);
+    });
+}
+
+function walkBlocks(blocks, cb) {
+    if (!blocks) { return; }
+    for (var i = 0; i < blocks.length; i++) {
+        cb(blocks[i]);
+        /* Tables can be nested inside paragraphs as inlines */
+        if (blocks[i].inlines) {
+            for (var k = 0; k < blocks[i].inlines.length; k++) {
+                var inline = blocks[i].inlines[k];
+                if (inline && inline.blocks) { walkBlocks(inline.blocks, cb); }
+            }
+        }
+        /* Cells wrap blocks too. */
+        if (blocks[i].cells) {
+            for (var c = 0; c < blocks[i].cells.length; c++) {
+                if (blocks[i].cells[c].blocks) { walkBlocks(blocks[i].cells[c].blocks, cb); }
+            }
+        }
+        if (blocks[i].rows) {
+            for (var rowIdx = 0; rowIdx < blocks[i].rows.length; rowIdx++) {
+                var row = blocks[i].rows[rowIdx];
+                if (row && row.cells) {
+                    for (var ci = 0; ci < row.cells.length; ci++) {
+                        if (row.cells[ci].blocks) { walkBlocks(row.cells[ci].blocks, cb); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* Find MERGEFIELD inlines in a paragraph and replace the result text.
+   The MERGEFIELD structure (per Syncfusion SFDT) is:
+
+     { fieldType: 0 }                                <-- Begin
+     { text: "MERGEFIELD <FieldName>  \\* MERGEFORMAT" }
+     { fieldType: 1 }                                <-- Separate
+     { text: "<<FieldName>>" }                       <-- Result (visible)
+     { fieldType: 2 }                                <-- End
+
+   We replace the result text with the record's value, leaving the
+   other nodes untouched so the field remains a real Word MERGEFIELD. */
+function expandMergeFieldsInParagraph(paragraph, record) {
+    if (!paragraph || !paragraph.inlines) { return; }
+    var inlines = paragraph.inlines;
+    var i = 0;
+    while (i < inlines.length) {
+        var node = inlines[i];
+        if (node && node.fieldType === 0) {
+            /* Find matching fieldType 2 (end) and the code/result in between. */
+            var fieldName = null;
+            var resultIdx = -1;
+            var depth = 1;
+            var j = i + 1;
+            while (j < inlines.length && depth > 0) {
+                var inner = inlines[j];
+                if (inner && inner.fieldType === 0) { depth++; }
+                else if (inner && inner.fieldType === 2) { depth--; if (depth === 0) { break; } }
+                else if (inner && inner.fieldType === 1 && depth === 1 && resultIdx < 0) {
+                    resultIdx = j + 1;
+                }
+                else if (depth === 1 && !fieldName && inner && typeof inner.text === "string") {
+                    var m = /^MERGEFIELD\s+([A-Za-z0-9_]+)/.exec(inner.text);
+                    if (m) { fieldName = m[1]; }
+                }
+                j++;
+            }
+            if (fieldName && resultIdx >= 0 && resultIdx < inlines.length && inlines[resultIdx]) {
+                var replacement = record[fieldName];
+                if (replacement === undefined || replacement === null) {
+                    replacement = "\u00ab" + fieldName + "\u00bb";   // leave the placeholder if no value
+                } else {
+                    replacement = String(replacement);
+                }
+                /* Preserve formatting from the original result run. */
+                var orig = inlines[resultIdx];
+                inlines[resultIdx] = {
+                    text: replacement,
+                    characterFormat: orig.characterFormat || { fontSize: 11 }
+                };
+            }
+            i = j + 1;
+            continue;
+        }
+        i++;
+    }
+}
+
+/* Cheap deep clone (JSON-roundtrip). Safe because every block in the
+   SFDT is plain JSON. */
+function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+function deepCloneSection(section) {
+    var c = deepClone(section);
+    return c;
+}
 
 /* Helpers */
 function setStatus(msg, isError) {
@@ -935,7 +1447,21 @@ function insertToc() {
     }
 }
 
-/* Generate the ESG report */
+/* ------------------------------------------------------------------
+   Verbose-SFDT cache
+   ------------------------------------------------------------------
+   The DOCX Editor accepts a verbose SFDT on editor.open() but stores
+   an "optimized" form internally (short keys: sec/secpr/b/i/pf/cf/
+   tlp/ft, etc.). When we serialize back we get the optimized form,
+   which uses a different MERGEFIELD layout that is harder to rewrite
+   directly. To keep the mail-merge logic simple we cache the verbose
+   SFDT produced by EsgReportBuilder.build() and use that as the
+   source for the client-side merge. The cache is refreshed every time
+   the report is regenerated and is cleared when the user opens an
+   external .sfdt draft (where the structure is not guaranteed).
+   ------------------------------------------------------------------ */
+var verboseSfdtCache = null;
+
 function buildReport(initial) {
     var cfg = readConfig();
 
@@ -945,6 +1471,10 @@ function buildReport(initial) {
     }
 
     var sfdt = EsgReportBuilder.build(cfg);
+    /* Cache the verbose SFDT for mail merge. */
+    try { verboseSfdtCache = JSON.parse(sfdt); }
+    catch (cacheErr) { verboseSfdtCache = null; }
+
     editor.open(sfdt);
     editor.documentName = makeFileName(cfg);
 
@@ -971,7 +1501,7 @@ function escapeHtml(s) {
 
 /* Chrome buttons */
 function wireUpUi() {
-    document.getElementById("btnBuild").addEventListener("click", function () { buildReport(false); });
+    document.getElementById("btnBuild").addEventListener("click", function () { runMailMerge(); buildReport(false); });
 
     document.getElementById("btnReset").addEventListener("click", function () {
         buildReport(false);
@@ -1006,6 +1536,10 @@ function wireUpUi() {
         reader.onload = function (ev) {
             editor.open(ev.target.result);
             editor.documentName = file.name.substr(0, file.name.lastIndexOf("."));
+            /* Drop the verbose-SFDT cache - the loaded draft may use a
+               different format and our mail-merge walker expects the
+               fieldType marker layout produced by EsgReportBuilder. */
+            verboseSfdtCache = null;
             setStatus('Opened draft "' + escapeHtml(file.name) + '".');
         };
         reader.readAsText(file);

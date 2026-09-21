@@ -235,7 +235,14 @@ body {
     margin-bottom: 8px;
 }
 
-.chrome-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.chrome-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Mail-merge widgets (Insert Field drop-down lives in the chrome). */
+#mergeFieldDrop { display: inline-flex; align-items: center; }
+
+/* Syncfusion's DropDownButton inner element ignores margins; align with
+   neighbouring buttons explicitly. */
+#mergeFieldDrop .e-dropdown-btn { margin: 0 4px; }
 
 #DocumentEditor { flex: 1; min-height: 420px; }
 
